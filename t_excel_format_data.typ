@@ -2,28 +2,28 @@ create or replace type t_excel_format_data as object(
 
   -- Author  : EYDENZONBA
   -- Created : 03.04.2017 10:20:42
-  -- Purpose : типы данных для excel
+  -- Purpose : data types for excel
 
   data_type varchar2(30),
 
-  -- конструктор
+  -- constructor
   constructor function t_excel_format_data(
-    data_type varchar2)                            -- тип данных
+    data_type varchar2)                            -- data type
   return self as result,
 
-  -- индекс типа данных
+  -- data type index
   member function get_index return number,
 
-  -- тип данных
+  -- data type description
   member function get_type return varchar2
 
 )
 /
 create or replace type body t_excel_format_data is
 
-  -- конструктор
+  -- contructor
   constructor function t_excel_format_data(
-    data_type varchar2)                            -- тип данных
+    data_type varchar2)                            -- data type
   return self as result
   is
   begin
@@ -37,7 +37,7 @@ create or replace type body t_excel_format_data is
                             'dtInteger, dtNumber2, dtNumber4, dtNumberSeparator2 or dtNumberSeparator4 are allowed.');
   end;
 
-  -- индекс типа данных
+  -- data type index
   member function get_index return number is
     rcod number;
   begin
@@ -56,7 +56,7 @@ create or replace type body t_excel_format_data is
     return rcod;
   end;
 
-  -- тип данных
+  -- data type decription
   member function get_type return varchar2 is
     rcod varchar2(10);
   begin

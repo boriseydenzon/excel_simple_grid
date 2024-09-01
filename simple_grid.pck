@@ -1,44 +1,44 @@
-﻿create or replace package simple_grid is
+create or replace package simple_grid is
 
   -- Author  : EYDENZONBA
   -- Created : 29.03.2017 14:44:33
-  -- Purpose : создание простых отчетов
+  -- Purpose : creation simple report
 
-  -- настройки стиля по умолчанию
+  -- settings style default
   def_font varchar2(50) := 'Arial';
   def_font_size pls_integer := 8;
-  -- ширина колонки по умолчанию
+  -- width column default
   def_width number := 42;
 
-  -- описание колонок
+  -- columns description
   type t_column_type_rec is record(
     title varchar2(250),
     datatype t_excel_format_data,
     width number);
   type t_column_type_tbl is table of t_column_type_rec index by pls_integer;
-  -- пользовательские строки
+  -- custom rows
   type t_custom_rows_rec is table of varchar2(250) index by pls_integer;
 
-  -- создание книги
+  -- creation book
   function book(
-    sheet_name varchar2,                           -- заголовок листа
-    report_name varchar2,                          -- заголовок отчета
-    columns_set t_column_type_tbl,                 -- массив колонок
-    custom_rows t_custom_rows_rec,                 -- массив пользовательских строк
-    sql_text varchar2)                             -- текст курсора
+    sheet_name varchar2,                           -- sheet title
+    report_name varchar2,                          -- report title
+    columns_set t_column_type_tbl,                 -- columns dimension
+    custom_rows t_custom_rows_rec,                 -- custom rows dimension
+    sql_text varchar2)                             -- cursor text
   return blob;
 
 end simple_grid;
 /
 create or replace package body simple_grid is
 
-  -- перевод строки
+  -- line feed
   lf constant varchar2(2) := chr(13);
-  -- максимальное число строк
+  -- rows number maximum
   row_count constant pls_integer := 100000;
-  -- xml-файл отчета
+  -- xml file report
   report_clob clob;
-  -- описание отчета
+  -- report description
   type t_report_rec is record(
     sheet_title varchar2(250),
     report_title varchar2(250),
@@ -47,7 +47,7 @@ create or replace package body simple_grid is
     row_offset number);
   report t_report_rec;
 
-  -- заголовок книги
+  -- book title
   procedure header_book is
   begin
     dbms_lob.append(report_clob,
@@ -61,7 +61,7 @@ create or replace package body simple_grid is
                     '<ProtectStructure>False</ProtectStructure>' || lf ||
                     '<ProtectWindows>False</ProtectWindows>' || lf ||
                     '</ExcelWorkbook>' || lf ||
-                    -- стиль по умолчанию
+                    -- default style
                     '<Styles>' || lf ||
                     '<Style ss:ID="Default" ss:Name="Normal">' || lf ||
                     '<Alignment ss:Vertical="Top"/>' || lf ||
@@ -71,19 +71,19 @@ create or replace package body simple_grid is
                     '<NumberFormat/>' || lf ||
                     '<Protection/>' || lf ||
                     '</Style>' || lf ||
-                    -- заголовок
+                    -- title
                     '<Style ss:ID="s1">' || lf ||
                     '<Alignment ss:Vertical="Center"/>' || lf ||
                     '<Font ss:FontName="' || def_font || '" x:CharSet="204" x:Family="Swiss" ss:Size="' || (def_font_size + 2) || '" ss:Color="#000000" ss:Bold="1"/>' || lf ||
                     '<NumberFormat ss:Format="@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- пользовательская строка
+                    -- custom row
                     '<Style ss:ID="s2">' || lf ||
                     '<Alignment ss:Vertical="Center"/>' || lf ||
                     '<Font ss:FontName="' || def_font || '" x:CharSet="204" x:Family="Swiss" ss:Size="' || (def_font_size + 2) || '" ss:Color="#000000"/>' || lf ||
                     '<NumberFormat ss:Format="@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- шапка
+                    -- title
                     '<Style ss:ID="s3">' || lf ||
                     '<Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>' || lf ||
                     '<Borders>' || lf ||
@@ -93,47 +93,47 @@ create or replace package body simple_grid is
                     '<Font ss:FontName="' || def_font || '" x:CharSet="204" x:Family="Swiss" ss:Size="' || def_font_size || '" ss:Color="#000000" ss:Bold="1"/>' || lf ||
                     '<NumberFormat ss:Format="@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- строка
+                    -- string
                     '<Style ss:ID="s4">' || lf ||
                     '<NumberFormat ss:Format="@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- строка с переносом
+                    -- string with line feed
                     '<Style ss:ID="s5">' || lf ||
                     '<Alignment ss:Vertical="Top" ss:WrapText="1"/>' || lf ||
                     '<NumberFormat ss:Format="@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- дата
+                    -- date
                     '<Style ss:ID="s6">' || lf ||
                     '<NumberFormat ss:Format="dd/mm/yyyy"/>' || lf ||
                     '</Style>' || lf ||
-                    -- дата/время
+                    -- date/time
                     '<Style ss:ID="s7">' || lf ||
                     '<NumberFormat ss:Format="dd/mm/yyyy\ h:mm:ss;@"/>' || lf ||
                     '</Style>' || lf ||
-                    -- целое
+                    -- integer
                     '<Style ss:ID="s8">' || lf ||
                     '<NumberFormat ss:Format="0"/>' || lf ||
                     '</Style>' || lf ||
-                    -- вещественное (2 знака)
+                    -- float (2 signs)
                     '<Style ss:ID="s9">' || lf ||
                     '<NumberFormat ss:Format="0.00"/>' || lf ||
                     '</Style>' || lf ||
-                    -- вещественное (4 знака)
+                    -- float (4 signs)
                     '<Style ss:ID="s10">' || lf ||
                     '<NumberFormat ss:Format="0.0000"/>' || lf ||
                     '</Style>' || lf ||
-                    -- вещественное (2 знака) с группировкой разрядов
+                    -- float (2 signs) with digit grouping
                     '<Style ss:ID="s11">' || lf ||
                     '<NumberFormat ss:Format="#,##0.00"/>' || lf ||
                     '</Style>' || lf ||
-                    -- вещественное (4 знака) с группировкой разрядов
+                    -- float (4 signs) with digit grouping
                     '<Style ss:ID="s12">' || lf ||
                     '<NumberFormat ss:Format="#,##0.0000"/>' || lf ||
                     '</Style>' || lf ||
                     '</Styles>' || lf);
   end header_book;
 
-  -- заголовок листа
+  -- sheet title
   procedure header_worksheet is
   begin
     dbms_lob.append(report_clob,
@@ -141,7 +141,7 @@ create or replace package body simple_grid is
                     '<Table ss:ExpandedColumnCount="' || report.col_set.count || '" ss:ExpandedRowCount="' || row_count || '" x:FullColumns="1" x:FullRows="1">' || lf);
   end header_worksheet;
 
-  -- добавление колонок
+  -- add columns
   procedure add_columns is
   begin
     for i in 1 .. report.col_set.count loop
@@ -152,14 +152,14 @@ create or replace package body simple_grid is
     end loop;
   end add_columns;
 
-  -- добавление заголовка отчета
+  -- add title report
   procedure add_report_title is
   begin
     dbms_lob.append(report_clob,
                     '<Row><Cell ss:StyleID="s1"><Data ss:Type="String">' || report.report_title || '</Data></Cell></Row>' || lf);
   end add_report_title;
 
-  -- добавление пользовательских строк
+  -- add custom rows
   procedure add_custom_str is
   begin
     for i in 1 .. report.custom_str.count loop
@@ -168,7 +168,7 @@ create or replace package body simple_grid is
     end loop;
   end add_custom_str;
 
-  -- добавление заголовков колонок
+  -- add columns descriptions
   procedure add_columns_title is
   begin
     dbms_lob.append(report_clob, '<Row ss:AutoFitHeight="1">' || lf);
@@ -179,9 +179,9 @@ create or replace package body simple_grid is
     dbms_lob.append(report_clob, '</Row>' || lf);
   end add_columns_title;
 
-  -- тело отчета
+  -- body report
   procedure body_book(
-    sql_text varchar2)                             -- текст курсора
+    sql_text varchar2)                             -- cursor text
   is
     cr pls_integer;
     cr_count pls_integer := 0;
@@ -189,7 +189,7 @@ create or replace package body simple_grid is
     row_data clob;
     exec_sql clob;
   begin
-    -- получение описания полей курсора
+    -- get descriptions fields cursor
     cr := dbms_sql.open_cursor;
     dbms_sql.parse(cr, sql_text, dbms_sql.native);
     dbms_sql.describe_columns(cr, cr_count, rec_tbl);
@@ -230,7 +230,7 @@ create or replace package body simple_grid is
       raise_application_error(-20001, $$plsql_unit || ': ' || sqlerrm);
   end body_book;
 
-  -- подвал листа
+  -- sheet footer
   procedure footer_worksheet is
   begin
     dbms_lob.append(report_clob,
@@ -238,7 +238,7 @@ create or replace package body simple_grid is
                     '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">' || lf ||
                     '<PageSetup>' || lf ||
                     '<Layout x:CenterHorizontal="1"/>' || lf ||
-                    '<Header x:Margin="0.2" x:Data="' || convert('&amp;RСтраница &amp;P из &amp;N', 'UTF8') || '"/>' || lf ||
+                    '<Header x:Margin="0.2" x:Data="' || convert('&amp;R�������� &amp;P �� &amp;N', 'UTF8') || '"/>' || lf ||
                     '<Footer x:Margin="0.2"/>' || lf ||
                     '<PageMargins x:Bottom="0.4" x:Left="0.4" x:Right="0.4" x:Top="0.4"/>' || lf ||
                     '</PageSetup>' || lf ||
@@ -255,19 +255,19 @@ create or replace package body simple_grid is
                     '</Worksheet>' || lf);
   end footer_worksheet;
 
-  -- подвал книги
+  -- book footer
   procedure footer_book is
   begin
     dbms_lob.append(report_clob, '</Workbook>' || lf);
   end footer_book;
 
-  -- создание книги
+  -- creation book
   function book(
-    sheet_name varchar2,                           -- заголовок листа
-    report_name varchar2,                          -- заголовок отчета
-    columns_set t_column_type_tbl,                 -- массив колонок
-    custom_rows t_custom_rows_rec,                 -- массив пользовательских строк
-    sql_text varchar2)                             -- текст курсора
+    sheet_name varchar2,                           -- sheet title
+    report_name varchar2,                          -- report title
+    columns_set t_column_type_tbl,                 -- columns dimension
+    custom_rows t_custom_rows_rec,                 -- custom rows dimension
+    sql_text varchar2)                             -- cursor text
   return blob is
     dst_offset number := 1;
     src_offset number := 1;
@@ -275,7 +275,7 @@ create or replace package body simple_grid is
     warn number := dbms_lob.warn_inconvertible_char;
     rcod blob;
   begin
-    -- инициализация объектов
+    -- initialization objects
     dbms_lob.createtemporary(rcod, false, dbms_lob.call);
     dbms_lob.createtemporary(report_clob, false, dbms_lob.call);
     report.sheet_title := convert(sheet_name, 'UTF8');
@@ -289,25 +289,25 @@ create or replace package body simple_grid is
       report.custom_str(i) := '<![CDATA[' || convert(custom_rows(i), 'UTF8') || ']]>';
     end loop;
     report.row_offset := report.custom_str.count;
-    -- заголовок
+    -- book title
     header_book;
-    -- лист
+    -- sheet title
     header_worksheet;
-    -- колонки
+    -- columns
     add_columns;
-    -- наименование отчета
+    -- report title
     add_report_title;
-    -- пользовательские строки
+    -- custom rows
     add_custom_str;
-    -- наименования колонок
+    -- columns descriptions
     add_columns_title;
-    -- данные
+    -- data
     body_book(sql_text);
-    -- подвал листа
+    -- sheet footer
     footer_worksheet;
-    -- подвал книги
+    -- book footer
     footer_book;
-    -- конвертация
+    -- conversion
     dbms_lob.converttoblob(rcod,
                            report_clob,
                            dbms_lob.lobmaxsize,
@@ -316,7 +316,7 @@ create or replace package body simple_grid is
                            dbms_lob.default_csid,
                            lng_context,
                            warn);
-    -- компрессия
+    -- compression
     return utl_compress.lz_compress(rcod);
   end book;
 
